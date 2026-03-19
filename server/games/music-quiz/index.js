@@ -92,13 +92,17 @@ function fuzzyMatch(guess, target) {
 function startRound(io, room) {
 	const state = room.gameState;
 	if (state.currentIndex >= state.order.length) {
-		state.phase = "picking";
-		state.picks = {};
-		state.order = [];
-		state.currentIndex = 0;
-		state.guesses = {};
-		broadcastState(io, room);
-		io.to(room.code).emit("music:allSongsPlayed");
+		// Copy scores back onto player objects so EndScreen can read player.score
+		room.players.forEach((p) => {
+			p.score = state.scores[p.id] || 0;
+		});
+		state.phase = "ended";
+		room.status = "ended";
+		io.to(room.code).emit("game:ended", {
+			game: "music-quiz",
+			players: room.players,
+			scores: state.scores,
+		});
 		return;
 	}
 
@@ -157,14 +161,13 @@ function endRound(io, room) {
 
 function start(io, socket, room) {
 	const state = room.gameState;
-	state.order = Object.keys(state.picks).sort(() => Math.random() - 0.5);
-	state.currentIndex = 0;
+	// Only initialise scores and broadcast the picking screen.
+	// startRound is triggered by music:startGame once players have picked.
 	state.scores = {};
 	room.players.forEach((p) => {
 		state.scores[p.id] = 0;
 	});
-	// Don't call the module start() from here — startRound handles everything
-	setTimeout(() => startRound(io, room), 1500);
+	broadcastState(io, room);
 }
 
 function handleEvent(io, socket, room, event, args) {
@@ -204,7 +207,12 @@ function handleEvent(io, socket, room, event, args) {
 			if (state.phase !== "picking") return;
 			const pickedCount = Object.keys(state.picks).length;
 			if (pickedCount < 2) return;
-			start(io, socket, room);
+			// Shuffle picks into play order here, not in start()
+			state.order = Object.keys(state.picks).sort(
+				() => Math.random() - 0.5,
+			);
+			state.currentIndex = 0;
+			setTimeout(() => startRound(io, room), 500);
 			break;
 		}
 

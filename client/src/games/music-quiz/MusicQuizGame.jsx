@@ -27,15 +27,6 @@ function reducer(state, action) {
 				roundEndData: null,
 				...action.payload,
 			};
-		case "ALL_PLAYED":
-			return {
-				...state,
-				phase: "picking",
-				picks: {},
-				pickedPlayerIds: [],
-				myGuessResult: null,
-				roundEndData: null,
-			};
 		default:
 			return state;
 	}
@@ -79,9 +70,6 @@ export default function MusicQuizGame() {
 		socket.on("music:roundEnded", (d) =>
 			dispatch({ type: "ROUND_ENDED", payload: d }),
 		);
-		socket.on("music:allSongsPlayed", () =>
-			dispatch({ type: "ALL_PLAYED" }),
-		);
 		socket.on("music:playerPicked", () => {});
 
 		return () => {
@@ -91,7 +79,6 @@ export default function MusicQuizGame() {
 				"music:guessResult",
 				"music:guessUpdate",
 				"music:roundEnded",
-				"music:allSongsPlayed",
 				"music:playerPicked",
 			].forEach((e) => socket.off(e));
 		};
